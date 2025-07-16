@@ -123,3 +123,8 @@ _C.SOLVER.LR_LINEAR_PROJ_MULT = 0.1
 # 1 - Generic, 2 - Weak, 3 - Strong (for icdar2015)
 # 1 - Full lexicon (for totaltext)
 _C.TEST.LEXICON_TYPE = 1
+# ---------------------------------------------------------------------------- #
+# Inference Options
+# ---------------------------------------------------------------------------- #
+_C.INFERENCE = CN()
+_C.INFERENCE.INPUT_GLOB = ""  # Glob or directory path for inference images

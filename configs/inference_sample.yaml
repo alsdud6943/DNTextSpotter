@@ -1,0 +1,42 @@
+# Sample inference-only config for DNTextSpotter
+# Only settings needed to run detection+text spotting
+
+# Device to run inference on: "cpu" or "cuda"
+MODEL:
+  DEVICE: "cuda"
+  # Path to your pre-trained weights
+  WEIGHTS: "/home/hanta/minyeong/DNTextSpotter/vitaev2_pretrain_tt_model_final.pth"
+  # Confidence thresholds for different heads
+  RETINANET:
+    SCORE_THRESH_TEST: 0.5
+  ROI_HEADS:
+    SCORE_THRESH_TEST: 0.5
+  FCOS:
+    INFERENCE_TH_TEST: 0.5
+  MEInst:
+    INFERENCE_TH_TEST: 0.5
+  PANOPTIC_FPN:
+    COMBINE:
+      INSTANCES_CONFIDENCE_THRESH: 0.5
+
+# Dataset(s) for evaluation/inference (used by MetadataCatalog)
+# Replace "my_test_dataset" with the name you registered
+DATASETS:
+  TEST: ["my_test_dataset"]
+
+# Input settings for inference
+INPUT:
+  # Shorter side at least this long (longer side capped by MAX_SIZE_TEST)
+  MIN_SIZE_TEST: 100
+  # Longer side at most this long
+  MAX_SIZE_TEST: 1333
+
+# Simple default settings for inference
+TEST:
+  # Enable Test-Time Augmentation? (usually False for speed)
+  AUG:
+    ENABLED: False
+
+  # Glob or directory path for inference images (overrides CLI)
+INFERENCE:
+  INPUT_GLOB: "/home/hanta/minyeong/OCR/clahe/*.jpg"
