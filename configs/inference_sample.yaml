@@ -1,35 +1,30 @@
 # Sample inference-only config for DNTextSpotter
+# Inherit from the ViTAEv2 base configuration
+_BASE_: "/home/hanta/minyeong/DNTextSpotter/configs/ViTAEv2_S/Base_det.yaml"
+VERSION: 2
 # Only settings needed to run detection+text spotting
 
 # Device to run inference on: "cpu" or "cuda"
 MODEL:
-  DEVICE: "cuda"
-  # Path to your pre-trained weights
+  DEVICE: "cpu"
+  # DEVICE: "cuda"
   WEIGHTS: "/home/hanta/minyeong/DNTextSpotter/vitaev2_pretrain_tt_model_final.pth"
-  # Confidence thresholds for different heads
-  RETINANET:
-    SCORE_THRESH_TEST: 0.5
-  ROI_HEADS:
-    SCORE_THRESH_TEST: 0.5
-  FCOS:
-    INFERENCE_TH_TEST: 0.5
-  MEInst:
-    INFERENCE_TH_TEST: 0.5
-  PANOPTIC_FPN:
-    COMBINE:
-      INSTANCES_CONFIDENCE_THRESH: 0.5
+  # Enable transformer head and set inference threshold
+  TRANSFORMER:
+    ENABLED: True
+    INFERENCE_TH_TEST: 0.4
 
 # Dataset(s) for evaluation/inference (used by MetadataCatalog)
 # Replace "my_test_dataset" with the name you registered
 DATASETS:
-  TEST: ["my_test_dataset"]
+  TEST: ("totaltext_test",)
 
 # Input settings for inference
 INPUT:
   # Shorter side at least this long (longer side capped by MAX_SIZE_TEST)
-  MIN_SIZE_TEST: 100
+  MIN_SIZE_TEST: 1024
   # Longer side at most this long
-  MAX_SIZE_TEST: 1333
+  MAX_SIZE_TEST: 1892
 
 # Simple default settings for inference
 TEST:
@@ -37,6 +32,20 @@ TEST:
   AUG:
     ENABLED: False
 
+# Lexicon-constrained CTC configuration
+LEXICON:
+  # Type of lexicon constraint: "none" (standard CTC) or "custom" (from file)
+  TYPE: "custom"
+  # Path to custom lexicon file (one word per line)
+  FILE: "tire_lexicon.txt"
+  # Similarity threshold for lexicon matching (0.0-1.0)
+  THRESHOLD: 0.6
+
   # Glob or directory path for inference images (overrides CLI)
 INFERENCE:
-  INPUT_GLOB: "/home/hanta/minyeong/OCR/clahe/*.jpg"
+  INPUT_GLOB: "/home/hanta/minyeong/OCR/clahe/20250103_*_KT*.jpg"
+  # INPUT_GLOB: "/home/hanta/minyeong/DNTextSpotter/outputs/블로그1.jpg"
+  OUTPUT_DIR: "outputs_yaml_config"
+
+
+# python tools/inference.py --config-file configs/inference_sample.yaml

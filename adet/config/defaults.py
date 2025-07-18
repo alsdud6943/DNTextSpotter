@@ -128,3 +128,12 @@ _C.TEST.LEXICON_TYPE = 1
 # ---------------------------------------------------------------------------- #
 _C.INFERENCE = CN()
 _C.INFERENCE.INPUT_GLOB = ""  # Glob or directory path for inference images
+_C.INFERENCE.OUTPUT_DIR = ""  # Directory to save output visualizations and transcriptions
+
+# ---------------------------------------------------------------------------- #
+# Lexicon-constrained CTC Options
+# ---------------------------------------------------------------------------- #
+_C.LEXICON = CN()
+_C.LEXICON.TYPE = "none"  # Type: "none" (standard CTC) or "custom" (from file)
+_C.LEXICON.FILE = ""  # Path to custom lexicon file (one word per line)
+_C.LEXICON.THRESHOLD = 0.6  # Similarity threshold for lexicon matching (0.0-1.0)
