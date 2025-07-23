@@ -14,12 +14,17 @@ import torch.nn.functional as F
 from torch.nn.init import xavier_uniform_, constant_
 from torch.autograd.function import once_differentiable
 
-from adet import _C
+try:
+    from adet import _C
+except ImportError:
+    _C = None
 import sys
 
 class _MSDeformAttnFunction(torch.autograd.Function):
     @staticmethod
     def forward(ctx, value, value_spatial_shapes, value_level_start_index, sampling_locations, attention_weights, im2col_step):
+        if _C is None:
+            raise RuntimeError("CUDA extensions not available, should use CPU fallback")
         ctx.im2col_step = im2col_step
         output = _C.ms_deform_attn_forward(
             value, value_spatial_shapes, value_level_start_index, sampling_locations, attention_weights, ctx.im2col_step)
@@ -29,6 +34,8 @@ class _MSDeformAttnFunction(torch.autograd.Function):
     @staticmethod
     @once_differentiable
     def backward(ctx, grad_output):
+        if _C is None:
+            raise RuntimeError("CUDA extensions not available, should use CPU fallback")
         value, value_spatial_shapes, value_level_start_index, sampling_locations, attention_weights = ctx.saved_tensors
         grad_value, grad_sampling_loc, grad_attn_weight = \
             _C.ms_deform_attn_backward(

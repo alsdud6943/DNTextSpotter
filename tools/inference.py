@@ -40,8 +40,6 @@ def setup_cfg(args):
     cfg.MODEL.RETINANET.SCORE_THRESH_TEST = args.confidence_threshold
     cfg.MODEL.ROI_HEADS.SCORE_THRESH_TEST = args.confidence_threshold
     cfg.MODEL.PANOPTIC_FPN.COMBINE.INSTANCES_CONFIDENCE_THRESH = args.confidence_threshold
-    # Load default checkpoint in code (override CLI)
-    cfg.MODEL.WEIGHTS = "/home/hanta/minyeong/DNTextSpotter/vitaev2_pretrain_tt_model_final.pth"
     cfg.freeze()
     return cfg
 
