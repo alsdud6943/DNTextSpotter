@@ -179,8 +179,18 @@ if __name__ == "__main__":
             )
 
             if args.output:
+                # Determine per-input subdirectory under the output base
+                if getattr(cfg, "INFERENCE", None) and cfg.INFERENCE.INPUT_GLOB:
+                    pattern = cfg.INFERENCE.INPUT_GLOB
+                    static_prefix = pattern.split('*')[0].rstrip('/')
+                    rel_dir = os.path.relpath(os.path.dirname(path), static_prefix)
+                    out_dir = os.path.join(args.output, rel_dir)
+                else:
+                    out_dir = args.output
+                os.makedirs(out_dir, exist_ok=True)
+
                 # Save visualization if available
-                out_filename = os.path.join(args.output, os.path.basename(path))
+                out_filename = os.path.join(out_dir, os.path.basename(path))
                 if visualized_output is not None:
                     visualized_output.save(out_filename)
                     logger.info(f"Visualization saved to: {out_filename}")
@@ -191,7 +201,7 @@ if __name__ == "__main__":
                 if "instances" in predictions and hasattr(predictions["instances"], 'recs') and len(predictions["instances"]) > 0:
                     # Create text filename by replacing image extension with .txt
                     base_name = os.path.splitext(os.path.basename(path))[0]
-                    text_filename = os.path.join(args.output, f"{base_name}_transcription.txt")
+                    text_filename = os.path.join(out_dir, f"{base_name}_transcription.txt")
                     
                     with open(text_filename, 'w', encoding='utf-8') as f:
                         instances = predictions["instances"]
@@ -234,3 +244,5 @@ if __name__ == "__main__":
     
     else:
         logger.error("No input images provided. Please use the --input argument.")
+
+# python tools/inference_all.py --config-file configs/inference_sample.yaml

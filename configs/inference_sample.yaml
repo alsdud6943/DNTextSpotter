@@ -35,17 +35,21 @@ TEST:
 # Lexicon-constrained CTC configuration
 LEXICON:
   # Type of lexicon constraint: "none" (standard CTC) or "custom" (from file)
-  TYPE: "custom"
+  # TYPE: "custom"
+  TYPE: "none"
   # Path to custom lexicon file (one word per line)
   FILE: "tire_lexicon.txt"
   # Similarity threshold for lexicon matching (0.0-1.0)
-  THRESHOLD: 0.6
+  THRESHOLD: 0.5
 
   # Glob or directory path for inference images (overrides CLI)
 INFERENCE:
-  INPUT_GLOB: "/home/hanta/minyeong/OCR/clahe/20250103_*_KT*.jpg"
+  # INPUT_GLOB: "/mnt/d/minyeong/LTR/clahe/*.jpg"
+  INPUT_GLOB: "/mnt/d/minyeong/LTR/ltr_rotation_imgs/*/*.jpg"
+  # INPUT_GLOB: "/mnt/d/minyeong/LTR/clahe/20250116_1926_KT235_65R16C_10RA18_LBEFHK_1.jpg"
+  # 20250116_1926_KT235_65R16C_10RA18_LBEFHK_1
   # INPUT_GLOB: "/home/hanta/minyeong/DNTextSpotter/outputs/블로그1.jpg"
-  OUTPUT_DIR: "outputs_yaml_config"
+  OUTPUT_DIR: "/mnt/d/minyeong/LTR/rotation_inference_results"
 
 
 # python tools/inference.py --config-file configs/inference_sample.yaml
