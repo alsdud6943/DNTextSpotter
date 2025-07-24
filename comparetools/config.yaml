@@ -1,0 +1,18 @@
+# Configuration file for OCR comparison tool
+# Edit these paths according to your setup
+
+# Base directories
+input_base: "/mnt/c/Users/HANTA/Desktop/minyeong/LTR/ltr_rotation_imgs_groundtruth"
+output_base: "/mnt/c/Users/HANTA/Desktop/minyeong/LTR/rotation_inference_results"
+
+# Optional: specific folder to analyze (leave empty to process all folders)
+folder: ""
+
+# Confidence threshold for considering OCR detections (optional)
+confidence_threshold: 0.4
+
+# Output settings
+verbose: false
+save_detailed_report: true
+report_file: "/mnt/c/Users/HANTA/Desktop/minyeong/LTR/rotation_compare_results/comparison_report.json"
+log_file: "/mnt/c/Users/HANTA/Desktop/minyeong/LTR/rotation_compare_results/comparison_log.txt"
