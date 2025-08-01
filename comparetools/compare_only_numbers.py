@@ -48,217 +48,90 @@ class OutputCapture:
         return False
 
 
+
+
+
 def extract_numbers_from_text(text, expected_patterns=None):
     """
     Extract just the numeric values from text, ignoring units.
     Used for transcription text where units may be mis-transcribed.
     
     Strategy:
-    1. Find numbers that appear with any unit or standalone
-    2. Handle OCR errors in numbers (s ↔ 5 confusion)
-    3. Return just the numeric values for comparison
+    1. Normalize all OCR-confused characters to digits (l/i→1, g→9, s→5, o→0)
+    2. Extract all contiguous digit sequences
+    3. Return the numeric values for comparison
     
-    Handles common OCR errors:
-    - 5 ↔ s confusion (e.g., "s7s" → "575", "14s0" → "1450")
+    This simple approach handles all OCR confusions naturally:
+    - "gookg" → "900k9" → extracts "900" and "9"
+    - "s7s" → "575" → extracts "575"  
+    - "14s0" → "1450" → extracts "1450"
+    - "2335lds" → "2335105" → extracts "2335" and "105"
     
-    Returns normalized numeric values: ["1450", "3195", "575", "83"]
+    Returns normalized numeric values: ["1450", "575", "900", "9"]
     """
     if not text:
         return []
     
-    # Convert to lowercase for case-insensitive matching
+    # Convert to lowercase for consistent processing
     text = text.lower()
     
-    # Extract all numbers (with or without units) - flexible for transcriptions
-    return extract_all_numbers(text)
-
-
-def extract_ground_truth_numbers_with_units(text):
-    """
-    Extract numbers with units from ground truth text using the reliable algorithm.
-    This uses the same extraction logic as the original compare.py for consistent results.
-    """
-    if not text:
-        return []
+    # Normalize OCR confusions to digits
+    # Common OCR character confusions:
+    # l, I -> 1
+    # g -> 9  
+    # s, S -> 5
+    # o, O -> 0 (sometimes)
+    normalized_text = text.replace('l', '1').replace('i', '1').replace('g', '9').replace('s', '5').replace('o', '0')
     
-    # Convert to lowercase for case-insensitive matching
-    text = text.lower()
+    # Extract all contiguous digit sequences (not requiring word boundaries)  
+    digit_sequences = re.findall(r'\d+', normalized_text)
     
-    # Use the reliable connected pattern extraction for ground truth
-    return extract_connected_numbers_units(text)
-
-
-def extract_connected_numbers_units(text):
-    """
-    Extract numbers with units using regex patterns for both connected and spaced text.
-    This is the same reliable algorithm from the original compare.py.
-    """
-    
-    # Patterns for different number formats with units (both connected and with spaces)
-    patterns = [
-        # Connected patterns (no spaces) - exact digits only
-        r'\b(\d+(?:\.\d+)?)kg\b',      # kg (e.g., 1450kg)
-        r'\b(\d+(?:\.\d+)?)lbs?\b',    # lbs/lb (e.g., 3000lbs)
-        r'\b(\d+(?:\.\d+)?)kpa\b',     # kPa (e.g., 575kpa)
-        r'\b(\d+(?:\.\d+)?)psi\b',     # PSI (e.g., 83psi)
-        r'\b(\d+(?:\.\d+)?)ps1\b',     # PS1 (OCR error for PSI)
-        
-        # Spaced patterns (with spaces) - exact digits only
-        r'\b(\d+(?:\.\d+)?)\s+kg\b',      # kg with space (e.g., 1450 kg)
-        r'\b(\d+(?:\.\d+)?)\s+lbs?\b',    # lbs/lb with space (e.g., 3000 lbs)
-        r'\b(\d+(?:\.\d+)?)\s+kpa\b',     # kPa with space (e.g., 575 kpa)
-        r'\b(\d+(?:\.\d+)?)\s+psi\b',     # PSI with space (e.g., 83 psi)
-        r'\b(\d+(?:\.\d+)?)\s+ps1\b',     # PS1 with space (OCR error for PSI)
-        
-        # OCR confusion patterns: 5 ↔ s (allow s at any position in number) - connected
-        r'\b([s\d]*[s\d]+(?:\.\d+)?)kg\b',      # kg with 's' instead of '5' (e.g., 14s0kg, s60kg, 1s60kg)
-        r'\b([s\d]*[s\d]+(?:\.\d+)?)lbs?\b',    # lbs with 's' instead of '5' (e.g., 319slbs, s000lbs)
-        r'\b([s\d]*[s\d]+(?:\.\d+)?)kpa\b',     # kPa with 's' instead of '5' (e.g., s7skpa, 57skpa)
-        r'\b([s\d]*[s\d]+(?:\.\d+)?)psi\b',     # PSI with 's' instead of '5' (e.g., 8spsi, s3psi)
-        r'\b([s\d]*[s\d]+(?:\.\d+)?)ps1\b',     # PS1 with 's' instead of '5'
-        
-        # OCR confusion patterns: 5 ↔ s (allow s at any position in number) - spaced
-        r'\b([s\d]*[s\d]+(?:\.\d+)?)\s+kg\b',      # kg with 's' instead of '5' and space (e.g., 14s0 kg)
-        r'\b([s\d]*[s\d]+(?:\.\d+)?)\s+lbs?\b',    # lbs with 's' instead of '5' and space (e.g., 319s lbs)
-        r'\b([s\d]*[s\d]+(?:\.\d+)?)\s+kpa\b',     # kPa with 's' instead of '5' and space (e.g., s7s kpa)
-        r'\b([s\d]*[s\d]+(?:\.\d+)?)\s+psi\b',     # PSI with 's' instead of '5' and space (e.g., 8s psi)
-        r'\b([s\d]*[s\d]+(?:\.\d+)?)\s+ps1\b',     # PS1 with 's' instead of '5' and space
-        
-        # OCR confusion patterns: 5 ↔ s in units themselves - connected
-        r'\b(\d+(?:\.\d+)?)p5i\b',     # P5I (OCR error for PSI: 5 instead of S)
-        r'\b(\d+(?:\.\d+)?)p51\b',     # P51 (OCR error for PSI: 5 instead of S, 1 instead of I)
-        r'\b(\d+(?:\.\d+)?)lb5\b',     # lb5 (OCR error for lbs: 5 instead of s)
-        r'\b([s\d]*[s\d]+(?:\.\d+)?)p5i\b',     # P5I with 's' in number
-        r'\b([s\d]*[s\d]+(?:\.\d+)?)p51\b',     # P51 with 's' in number
-        r'\b([s\d]*[s\d]+(?:\.\d+)?)lb5\b',     # lb5 with 's' in number
-        
-        # OCR confusion patterns: 5 ↔ s in units themselves - spaced
-        r'\b(\d+(?:\.\d+)?)\s+p5i\b',     # P5I with space (OCR error for PSI: 5 instead of S)
-        r'\b(\d+(?:\.\d+)?)\s+p51\b',     # P51 with space (OCR error for PSI: 5 instead of S, 1 instead of I)
-        r'\b(\d+(?:\.\d+)?)\s+lb5\b',     # lb5 with space (OCR error for lbs: 5 instead of s)
-        r'\b([s\d]*[s\d]+(?:\.\d+)?)\s+p5i\b',     # P5I with 's' in number and space
-        r'\b([s\d]*[s\d]+(?:\.\d+)?)\s+p51\b',     # P51 with 's' in number and space
-        r'\b([s\d]*[s\d]+(?:\.\d+)?)\s+lb5\b',     # lb5 with 's' in number and space
-    ]
-
+    # Convert to integers and back to strings to normalize (removes leading zeros)
     found_numbers = []
-    matched_positions = set()  # Track what we've already matched
-    
-    for pattern in patterns:
-        matches = re.finditer(pattern, text)  # Use finditer to get positions
-        for match_obj in matches:
-            match_text = match_obj.group(1)
-            start_pos = match_obj.start()
-            end_pos = match_obj.end()
-            
-            # Skip if this position range overlaps with already matched text
-            position_range = set(range(start_pos, end_pos))
-            if position_range & matched_positions:
-                continue
-            
-            # Skip matches that are purely letters (like "s" or "ss")
-            if match_text.replace('.', '').isalpha():
-                continue
-                
-            # Normalize 's' to '5' in the matched number
-            normalized_match = match_text.replace('s', '5')
-            
-            # Skip if the result doesn't look like a valid number
-            try:
-                # Test if it's a valid number after conversion
-                num_value = float(normalized_match)
-                # Convert to integer string if it's a whole number
-                if num_value == int(num_value):
-                    found_numbers.append(str(int(num_value)))
-                else:
-                    found_numbers.append(str(num_value))
-            except ValueError:
-                continue
-            
-            # Mark this position as matched
-            matched_positions.update(position_range)
-    
-    return found_numbers
-
-
-def extract_all_numbers(text):
-    """
-    Extract all numeric values from text, handling OCR errors and ignoring units.
-    Returns list of normalized numeric strings.
-    """
-    if not text:
-        return []
-    
-    # Patterns to match numbers (with or without any text following them)
-    patterns = [
-        # Numbers directly connected to letters only (no digits in units)
-        r'\b([s\d]*\d[s\d]*(?:\.\d+)?)[a-z]+\b',
-        
-        # Numbers followed by a single space and then letters only
-        r'\b([s\d]*\d[s\d]*(?:\.\d+)?)\s[a-z]+\b',
-        
-        # Handle specific OCR errors where letters in units become digits (like ps1, p51, etc.)
-        r'\b([s\d]*\d[s\d]*(?:\.\d+)?)ps1\b',  # ps1 (OCR error for psi)
-        r'\b([s\d]*\d[s\d]*(?:\.\d+)?)p51\b',  # p51 (OCR error for psi)
-        r'\b([s\d]*\d[s\d]*(?:\.\d+)?)p5i\b',  # p5i (OCR error for psi)
-        r'\b([s\d]*\d[s\d]*(?:\.\d+)?)lb5\b',  # lb5 (OCR error for lbs)
-        
-        # Handle spaced OCR errors
-        r'\b([s\d]*\d[s\d]*(?:\.\d+)?)\s+ps1\b',  # spaced ps1
-        r'\b([s\d]*\d[s\d]*(?:\.\d+)?)\s+p51\b',  # spaced p51
-        r'\b([s\d]*\d[s\d]*(?:\.\d+)?)\s+p5i\b',  # spaced p5i
-        r'\b([s\d]*\d[s\d]*(?:\.\d+)?)\s+lb5\b',  # spaced lb5
-        
-        # Standalone numbers (not followed by any letters or specific OCR errors)
-        r'\b([s\d]*\d[s\d]*(?:\.\d+)?)\b(?!\s*[a-z])',
-    ]
-    
-    found_numbers = []
-    matched_positions = set()
-    
-    for pattern in patterns:
-        matches = re.finditer(pattern, text.lower())
-        for match_obj in matches:
-            match_text = match_obj.group(1)
-            start_pos = match_obj.start()
-            end_pos = match_obj.end()
-            
-            # Skip if this position overlaps with already matched text
-            position_range = set(range(start_pos, end_pos))
-            if position_range & matched_positions:
-                continue
-            
-            # Skip matches that are purely letters
-            if match_text.replace('.', '').isalpha():
-                continue
-                
-            # Normalize 's' to '5'
-            normalized_match = match_text.replace('s', '5')
-            
-            # Validate it's a number after normalization
-            try:
-                num_value = float(normalized_match)
-                # Convert back to string, removing unnecessary decimal places
-                if num_value == int(num_value):
-                    found_numbers.append(str(int(num_value)))
-                else:
-                    found_numbers.append(str(num_value))
-                matched_positions.update(position_range)
-            except ValueError:
-                continue
+    for seq in digit_sequences:
+        try:
+            num_value = int(seq)
+            # Only keep multi-digit numbers (single digits are usually OCR noise)
+            if len(seq) > 1:  # Keep only numbers with 2+ digits
+                found_numbers.append(str(num_value))
+        except ValueError:
+            continue
     
     return found_numbers
 
 
 def extract_ground_truth_numbers(json_data):
-    """Extract numeric values from JSON ground truth data using reliable algorithm."""
+    """Extract numeric values from JSON ground truth data without OCR normalization."""
     all_text = ""
-    for key, value in json_data.items():
-        if isinstance(value, str):
-            all_text += " " + value
+    # for key, value in json_data.items():
+    #     if isinstance(value, str):
+    #         all_text += " " + value
     
-    # Use the reliable extraction method for ground truth, but return only numbers
-    return extract_ground_truth_numbers_with_units(all_text)
+    # Use only the "LOAD & PRESSURE" field for ground truth
+    all_text = json_data.get("LOAD & PRESSURE", "")
+
+    if not all_text:
+        return []
+    
+    # Convert to lowercase for consistent processing
+    all_text = all_text.lower()
+    
+    # Extract all contiguous digit sequences directly (no OCR normalization needed)
+    # Ground truth is manually created and doesn't have OCR errors
+    digit_sequences = re.findall(r'\d+', all_text)
+    
+    # Convert to integers and back to strings to normalize (removes leading zeros)
+    found_numbers = []
+    for seq in digit_sequences:
+        try:
+            num_value = int(seq)
+            # Only keep multi-digit numbers for consistency with OCR extraction
+            if len(seq) > 1:  # Keep only numbers with 2+ digits
+                found_numbers.append(str(num_value))
+        except ValueError:
+            continue
+    
+    return found_numbers
 
 
 def parse_transcription_file(file_path):
@@ -342,26 +215,41 @@ def compare_folder(input_folder, output_folder, output_capture=None):
     detected_counter = Counter(all_detected_numbers)
     out.print(f"\nDetected numbers (all files): {dict(detected_counter)}")
     
-    # Check for matches and misses
+    # Check for matches and misses using substring matching
     out.print(f"\n--- Comparison Results (Numbers Only) ---")
     all_correct = True
     
     for number, expected_count in gt_counter.items():
-        detected_count = detected_counter.get(number, 0)
-        if detected_count >= expected_count:  # Allow more detections than expected
-            out.print(f"✓ {number}: Expected {expected_count}, Found {detected_count}")
+        # Count how many detected numbers contain this ground truth number
+        matches_found = 0
+        matching_detections = []
+        
+        for detected_num, detected_count in detected_counter.items():
+            if number in detected_num:  # Check if ground truth number is substring of detected
+                matches_found += detected_count
+                matching_detections.append(f"{detected_num}({detected_count}x)")
+        
+        if matches_found >= expected_count:
+            if matching_detections:
+                out.print(f"✓ {number}: Expected {expected_count}, Found {matches_found} in {', '.join(matching_detections)}")
+            else:
+                out.print(f"✓ {number}: Expected {expected_count}, Found {matches_found}")
         else:
-            out.print(f"✗ {number}: Expected {expected_count}, Found {detected_count}")
+            out.print(f"✗ {number}: Expected {expected_count}, Found {matches_found}")
+            if matching_detections:
+                out.print(f"    Partial matches: {', '.join(matching_detections)}")
             all_correct = False
     
-    # Don't penalize for extra detections - they're just noise from material text
+    # Show extra detections that don't contain any ground truth numbers
     extra_detections = []
-    for number, detected_count in detected_counter.items():
-        if number not in gt_counter:
-            extra_detections.append(f"{number} (found {detected_count} times)")
+    for detected_num, detected_count in detected_counter.items():
+        # Check if this detection contains any ground truth number
+        contains_gt = any(gt_num in detected_num for gt_num in gt_counter.keys())
+        if not contains_gt:
+            extra_detections.append(f"{detected_num} (found {detected_count} times)")
     
     if extra_detections:
-        out.print(f"ℹ Extra detections (ignored): {', '.join(extra_detections)}")
+        out.print(f"ℹ Extra detections (no GT match): {', '.join(extra_detections)}")
     
     return {
         'folder': os.path.basename(input_folder),

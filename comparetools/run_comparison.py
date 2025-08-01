@@ -25,7 +25,7 @@ def main():
     
     # Run the comparison with config file
     cmd = [sys.executable, compare_script, "--config", config_file]
-    
+
     try:
         result = subprocess.run(cmd, check=True)
         return result.returncode
